@@ -253,6 +253,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("localhost", AI_PORT), Handler)
+    server = HTTPServer(("0.0.0.0", AI_PORT), Handler)
     print(f"AI HTTP 서버 실행 중: http://localhost:{AI_PORT}", flush=True)
     server.serve_forever()

@@ -7,6 +7,9 @@ import numpy as np
 import pickle
 import h5py
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from flask import Flask
+
+app=Flask((__name))
 
 AI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "smishing_ai_final", "smishing_ai_v2 backup")
 sys.path.insert(0, AI_DIR)

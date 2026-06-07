@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "스미싱 탐지기"
+version = "1.0.0"
+id = "artifacts/smishing-detector"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23172
+
+[services.development]
+run = "pnpm --filter @workspace/smishing-detector run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/smishing-detector", "run", "build" ]
+publicDir = "artifacts/smishing-detector/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23172"
+BASE_PATH = "/"

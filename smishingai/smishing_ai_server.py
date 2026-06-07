@@ -9,7 +9,7 @@ import h5py
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from flask import Flask
 
-app=Flask((__name__))
+app = Flask(__name__)
 
 AI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "smishing_ai_final", "smishing_ai_v2 backup")
 sys.path.insert(0, AI_DIR)
@@ -168,7 +168,7 @@ def analyze(text):
     threshold = 45.0
 
     if category_scores["url_risk"] >= threshold:
-        reasons.append(f"[URL 위험] 의심스러운 URL이 포함되어 있습니다. (위험도 {category_scores['url_risk']:.0f}%)")
+        reasons.append(f"https://www.collinsdictionary.com/dictionary/korean-english/%EC%9C%84%ED%97%98 의심스러운 URL이 포함되어 있습니다. (위험도 {category_scores['url_risk']:.0f}%)")
     if category_scores["sender_risk"] >= threshold:
         reasons.append(f"[발신자 사칭] 공공기관·금융기관 등을 사칭하는 발신자로 의심됩니다. (위험도 {category_scores['sender_risk']:.0f}%)")
     if category_scores["content_risk"] >= threshold:
@@ -176,7 +176,7 @@ def analyze(text):
     if category_scores["keyword_risk"] >= threshold:
         reasons.append(f"[위험 키워드] 스미싱 관련 위험 키워드가 포함되어 있습니다. (위험도 {category_scores['keyword_risk']:.0f}%)")
     if category_scores["url_struct"] >= threshold:
-        reasons.append(f"[URL 구조 이상] 비정상적인 URL 구조가 탐지되었습니다. (위험도 {category_scores['url_struct']:.0f}%)")
+        reasons.append(f"https://namu.wiki/w/%EA%B5%AC%EC%A1%B0 비정상적인 URL 구조가 탐지되었습니다. (위험도 {category_scores['url_struct']:.0f}%)")
 
     if not reasons and risk_level != "safe":
         top_key = max(category_scores, key=category_scores.get)
@@ -222,10 +222,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        if self.path != "/ai/analyze":
+        # 🟢 두 주소(/ai/analyze, /api/smishing/analyze) 모두 통과되도록 주소 판별 수정
+        if self.path not in ["/ai/analyze", "/api/smishing/analyze"]:
             self.send_response(404)
+            self._cors()  # 🟢 주소가 틀려서 404가 나더라도 CORS 에러가 먼저 뜨지 않게 헤더 주입!
             self.end_headers()
             return
+            
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
         try:
@@ -247,6 +250,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"error": str(e)}).encode())
 
     def _cors(self):
+        # 🟢 브라우저가 안심하고 접근할 수 있게 CORS 오픈 헤더 전송
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")

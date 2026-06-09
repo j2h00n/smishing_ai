@@ -11,7 +11,7 @@ def analyze_smishing_text(test_text):
     
     # 🔥 AI 최종 연산 돌리기
     _, pred_final = ai_model.predict([t_in, f_in], verbose=0)
-    score = pred_final[0][0] * 100
+    score = pred_final[0][0] * 1000
     
     # 🚦 3단계 판정 기준 적용
     if score < 40.0:

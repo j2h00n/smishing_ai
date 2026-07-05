@@ -115,14 +115,14 @@ with zipfile.ZipFile(keras_path) as zf:
 
         with h5py.File(weights_h5_path, "r") as hf:
             def get_vars(key):
-                group = hf[f"layers\\{key}"]["vars"]
+                group = hf[f"layers/{key}"]["vars"]
                 return [group[str(i)][:] for i in sorted(int(k) for k in group.keys())]
 
             embedding_layer = model.get_layer("embedding")
             embedding_layer.set_weights(get_vars("embedding"))
 
             lstm_layer = model.get_layer("lstm")
-            cell_group = hf["layers\\lstm\\cell"]["vars"]
+            cell_group = hf["layers/lstm/cell"]["vars"]
             cell_keys = sorted(int(k) for k in cell_group.keys())
             lstm_layer.set_weights([cell_group[str(k)][:] for k in cell_keys])
 

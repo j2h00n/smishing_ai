@@ -1,19 +1,50 @@
+import numpy as np
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+try:
+    from library_import import ai_model, ai_tokenizer
+except Exception:
+    ai_model = None
+    ai_tokenizer = None
+
+from feature_extractor import extract_features
+
+
+def _get_ai_learned_weights():
+    if hasattr(_get_ai_learned_weights, "weights_cache"):
+        return _get_ai_learned_weights.weights_cache
+
+    if ai_model is None:
+        weights = np.array([20.0, 20.0, 20.0, 20.0, 20.0], dtype=np.float32)
+        _get_ai_learned_weights.weights_cache = weights
+        return weights
+
+    try:
+        last_layer_weights = ai_model.layers[-1].get_weights()[0]
+        raw_weights = np.mean(np.abs(last_layer_weights), axis=1)[:5]
+        raw_weights = np.where(raw_weights > 0, raw_weights, 1e-6)
+        weights = (raw_weights / np.sum(raw_weights)) * 100
+    except Exception:
+        weights = np.array([20.0, 20.0, 20.0, 20.0, 20.0], dtype=np.float32)
+
+    _get_ai_learned_weights.weights_cache = weights
+    return weights
+
+
 def analyze_smishing_text(test_text):
-    max_len = 50  # 최신 천재 뇌 크기 고정!
-    
-    # 🧼 양끝 공백만 가볍게 제거
+    max_len = 50
+
     clean_text = test_text.strip()
-    
-    # 💡 짧습니다 필터 제거! 주소만 있든, 단어 하나만 있든 무조건 AI 예측 실행
     seq = ai_tokenizer.texts_to_sequences([clean_text])
     t_in = pad_sequences(seq, maxlen=max_len, padding="post")
     f_in = np.array([extract_features(clean_text)], dtype=np.float32)
-    
-    # 🔥 AI 최종 연산 돌리기
-    _, pred_final = ai_model.predict([t_in, f_in], verbose=0)
-    score = pred_final[0][0] * 100
-    
-    # 🚦 3단계 판정 기준 적용
+
+    pred_5, _ = ai_model.predict([t_in, f_in], verbose=0)
+    ai_learned_weights = _get_ai_learned_weights()
+
+    calculated_score = float(np.sum(pred_5[0] * ai_learned_weights))
+    score = round(calculated_score, 1)
+
     if score < 40.0:
         return score, "🟢 [안전]", "스미싱 확률이 낮습니다. 안심하셔도 좋습니다.", "green"
     elif score < 75.0:

@@ -23,6 +23,59 @@ from tensorflow.keras.layers import Input, Embedding, LSTM, Dense, Dropout, Conc
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
+try:
+    import types
+    import keras
+    from keras import preprocessing as keras_preprocessing
+    from tensorflow.keras import preprocessing as tf_preprocessing
+    from tensorflow.keras.preprocessing import text as tf_text
+    from tensorflow.keras.preprocessing import sequence as tf_sequence
+except Exception:
+    keras = None
+    keras_preprocessing = None
+    tf_preprocessing = None
+    tf_text = None
+    tf_sequence = None
+
+if keras is not None:
+    keras_src = types.ModuleType("keras.src")
+    keras_src.__path__ = []
+    sys.modules["keras"] = keras
+    sys.modules["keras.src"] = keras_src
+    setattr(keras, "src", keras_src)
+
+    if keras_preprocessing is not None:
+        sys.modules.setdefault("keras.preprocessing", keras_preprocessing)
+        setattr(keras, "preprocessing", keras_preprocessing)
+    if tf_preprocessing is not None:
+        sys.modules["keras.preprocessing"] = tf_preprocessing
+        sys.modules.setdefault("keras.preprocessing.sequence", tf_sequence)
+        sys.modules.setdefault("keras.preprocessing.text", tf_text)
+        setattr(keras, "preprocessing", tf_preprocessing)
+
+    preprocessing_module = types.ModuleType("keras.src.preprocessing")
+    preprocessing_module.__path__ = []
+    preprocessing_module.__package__ = "keras.src.preprocessing"
+    if tf_preprocessing is not None:
+        preprocessing_module.__dict__.update(tf_preprocessing.__dict__)
+    if tf_sequence is not None:
+        preprocessing_module.sequence = tf_sequence
+    if tf_text is not None:
+        preprocessing_module.text = tf_text
+    sys.modules["keras.src.preprocessing"] = preprocessing_module
+    setattr(keras_src, "preprocessing", preprocessing_module)
+
+    if tf_text is not None:
+        text_module = tf_text
+        text_module.__package__ = "keras.src.preprocessing.text"
+        sys.modules["keras.src.preprocessing.text"] = text_module
+        setattr(preprocessing_module, "text", text_module)
+    if tf_sequence is not None:
+        seq_module = tf_sequence
+        seq_module.__package__ = "keras.src.preprocessing.sequence"
+        sys.modules["keras.src.preprocessing.sequence"] = seq_module
+        setattr(preprocessing_module, "sequence", seq_module)
+
 MAX_LEN = 50
 FEATURE_DIM = 70
 
@@ -86,13 +139,6 @@ with zipfile.ZipFile(keras_path) as zf:
             outf_layer.set_weights(get_vars("dense_3"))
 
 print("모델 가중치 로드 완료!", flush=True)
-
-import tf_keras
-import tf_keras.src.preprocessing.text
-sys.modules.setdefault("keras", tf_keras)
-sys.modules.setdefault("keras.src", tf_keras.src)
-sys.modules.setdefault("keras.src.preprocessing", tf_keras.src.preprocessing)
-sys.modules.setdefault("keras.src.preprocessing.text", tf_keras.src.preprocessing.text)
 
 with open(os.path.join(AI_DIR, "tokenizer_combined.pickle"), "rb") as f:
     tokenizer = pickle.load(f)

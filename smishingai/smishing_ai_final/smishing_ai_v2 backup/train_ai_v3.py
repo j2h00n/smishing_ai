@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import pickle
+import tensorflow as tf
+import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -12,10 +14,27 @@ from tensorflow.keras.regularizers import l2
 from feature_extractor import extract_features
 
 # ==========================================
-# 1. 데이터 로드 및 전처리
+# 1. 차원 억까를 원천 차단하는 무적의 F2 수식
 # ==========================================
-file_name = "smishing_ai_final/smishing_ai_v2 backup/labeled_presentation_dataset.csv"  # 👈 라벨러가 뱉은 파일명으로 맞춰주세요!
-print(f"📦 [{file_name}] 데이터를 불러오는 중...")
+def f2_score(y_true, y_pred):
+    # 입력이 1D든 2D든 무조건 일렬(1차원)로 펴서 타입을 맞춤
+    y_true = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
+    y_pred = tf.cast(tf.reshape(tf.round(y_pred), [-1]), tf.float32)
+    
+    tp = tf.reduce_sum(y_true * y_pred)
+    fp = tf.reduce_sum((1.0 - y_true) * y_pred)
+    fn = tf.reduce_sum(y_true * (1.0 - y_pred))
+    
+    p = tp / (tp + fp + K.epsilon())
+    r = tp / (tp + fn + K.epsilon())
+    
+    return 5.0 * (p * r) / (4.0 * p + r + K.epsilon())
+
+# ==========================================
+# 2. 데이터 로드 및 전처리
+# ==========================================
+file_name = "smishingai/smishing_ai_final/smishing_ai_v2 backup/labeled_presentation_dataset.csv"
+print(f" 📂 [{file_name}] 데이터를 불러오는 중...")
 
 data = pd.read_csv(file_name, encoding="utf-8-sig")
 
@@ -31,15 +50,14 @@ texts = data["text"].astype(str).tolist()
 tokenizer = Tokenizer(num_words=5000, oov_token="<OOV>")
 tokenizer.fit_on_texts(texts)
 
-# 💡 [조정] 영어 문장은 한글보다 길기 때문에 maxlen을 30에서 50으로 확장합니다.
 max_len = 50
 X_text = pad_sequences(tokenizer.texts_to_sequences(texts), maxlen=max_len, padding="post")
 
-print("🔮 텍스트 특징(X_feature)을 추출하는 중... (시간이 조금 걸릴 수 있습니다)")
+print(" ⚙️ 텍스트 특징(X_feature)을 추출하는 중... (시간이 조금 걸릴 수 있습니다)")
 X_feature = np.array([extract_features(t) for t in texts], dtype=np.float32)
 
 # 토크나이저 저장
-with open("tokenizer_combined.pickle", "wb") as f:
+with open("smishingai/smishing_ai_final/smishing_ai_v2 backup/tokenizer_combined.pickle", "wb") as f:
     pickle.dump(tokenizer, f)
 
 # Train / Test 분할
@@ -47,8 +65,12 @@ X_t_train, X_t_test, X_f_train, X_f_test, y5_train, y5_test, yf_train, yf_test =
     X_text, X_feature, y_5_categories, y_final, test_size=0.2, random_state=42
 )
 
+# 🌟 [수정 수순 1] 최종 출력 데이터를 완벽한 2차원(batch_size, 1) 형태로 사전 변환
+yf_train_2d = np.array(yf_train).reshape(-1, 1)
+yf_test_2d = np.array(yf_test).reshape(-1, 1)
+
 # ==========================================
-# 2. 대용량/다국어 맞춤형 AI 모델 설계 (Multi-Task)
+# 3. 대용량/다국어 맞춤형 AI 모델 설계 (Multi-Task)
 # ==========================================
 # 텍스트 입력 처리층
 text_input = Input(shape=(max_len,), name="text_input")
@@ -68,41 +90,42 @@ z = Dropout(0.3)(z)
 
 # [출력 1] 5가지 세부 분석 결과
 out_5 = Dense(5, activation="sigmoid", name="out_5")(z)
+
 # [출력 2] 최종 스미싱 여부 (우리가 가장 중요하게 여길 메인 타깃)
-out_final = Dense(1, activation="sigmoid", name="out_final")(z)
+out_final = Dense(1, activation="sigmoid", name="out_final")(out_5) 
 
 model = Model(inputs=[text_input, feature_input], outputs=[out_5, out_final])
 
-# 최종 정답(out_final) 예측에 가중치 2.0을 주어 더 집중하게 만듭니다.
+# 🌟 [수정 수순 2] 컴파일 메트릭을 'accuracy' 대신 'binary_accuracy'로 원천 교정
 model.compile(
     loss={"out_5": "binary_crossentropy", "out_final": "binary_crossentropy"},
     loss_weights={"out_5": 1.0, "out_final": 2.0},
-    optimizer=Adam(learning_rate=0.0002), # 데이터가 많아졌으므로 보폭을 살짝 늘림 (0.0001 -> 0.0002)
-    metrics=["accuracy"]
+    optimizer=Adam(learning_rate=0.0002), 
+    metrics={'out_5': 'binary_accuracy', "out_final": f2_score}
 )
 
 # ==========================================
-# 3. AI 스마트 학습 시작 (EarlyStopping)
+# 4. AI 스마트 학습 시작 (EarlyStopping)
 # ==========================================
-print("\n🤖 [대용량 데이터 모드] 스스로 가중치를 찾아가는 딥러닝 학습을 시작합니다...")
-# patience=3으로 설정하여 검증 오차가 3번 연속 악화되면 과적합으로 판단하고 자동 멈춤
-early_stop = EarlyStopping(monitor="val_loss", patience=3, restore_best_weights=True)
+print("\n 🚀 [대용량 데이터 모드] 스스로 가중치를 찾아가는 딥러닝 학습을 시작합니다...")
+early_stop = EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
 
+# 🌟 [수정 수순 3] 사전에 정제해 둔 2D 변환 타깃 데이터(yf_train_2d) 투입
 history = model.fit(
     [X_t_train, X_f_train], 
-    {"out_5": y5_train, "out_final": yf_train},
+    {"out_5": y5_train, "out_final": yf_train_2d}, 
     epochs=50, 
-    batch_size=8,  # 데이터가 많으므로 배치를 4에서 8로 상향
+    batch_size=8, 
     callbacks=[early_stop],
-    validation_data=([X_t_test, X_f_test], {"out_5": y5_test, "out_final": yf_test}),
+    validation_data=([X_t_test, X_f_test], {"out_5": y5_test, "out_final": yf_test_2d}), 
     verbose=1
 )
 
-model.save("smishing_ai_final/smishing_ai_v2 backup/smishing_ai_combined.keras")
-print("\n✅ 학습 및 모델 저장 완료! 이제 진정한 인공지능이 완성되었습니다.")
+model.save("smishingai/smishing_ai_final/smishing_ai_v2 backup/smishing_ai_combined.keras")
+print("\n 🎉 학습 및 모델 저장 완료! 이제 인공지능이 완성되었습니다.")
 
 # ==========================================
-# 4. 실시간 탐지 테스트 모드
+# 5. 실시간 탐지 테스트 모드
 # ==========================================
 categories = ["URL 위험도", "발신자 신뢰도", "문자 내용 위험도", "키워드 탐지", "URL 구조 분석"]
 
@@ -111,12 +134,6 @@ while True:
     if test_text.lower() == 'q':
         break
     if not test_text:
-        continue
-        
-    # 🛡️ 억까 방지 필터 (텍스트 전처리)
-    clean_text = test_text.lower()
-    if len(clean_text) <= 5 or clean_text in ["http", "https", "www", "www.", "http://", "https://"]:
-        print("\n🚨 [안내] 입력된 내용이 너무 짧거나 단순 주소 형태입니다. (분석 제외)")
         continue
         
     # 데이터 변환

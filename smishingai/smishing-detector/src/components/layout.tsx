@@ -1,14 +1,11 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { ShieldCheck, History, BarChart3 } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
 
-  const pageTitle =
-    location === "/" ? "스미싱 분석" :
-    location === "/history" ? "분석 기록" :
-    "통계";
+  const pageTitle = "스미싱 분석";
 
   return (
     <SidebarProvider>
@@ -31,22 +28,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <Link href="/">
                         <ShieldCheck className="h-4 w-4" />
                         <span className="font-semibold">스미싱 분석</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location === "/history"}>
-                      <Link href="/history">
-                        <History className="h-4 w-4" />
-                        <span className="font-semibold">분석 기록</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location === "/stats"}>
-                      <Link href="/stats">
-                        <BarChart3 className="h-4 w-4" />
-                        <span className="font-semibold">통계</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

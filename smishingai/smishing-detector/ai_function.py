@@ -1,5 +1,14 @@
+import os
+import sys
+
 import numpy as np
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AI_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "smishing_ai_final", "smishing_ai_v2 backup"))
+for path in [BASE_DIR, AI_DIR]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 try:
     from library_import import ai_model, ai_tokenizer
@@ -43,11 +52,11 @@ def analyze_smishing_text(test_text):
     ai_learned_weights = _get_ai_learned_weights()
 
     calculated_score = float(np.sum(pred_5[0] * ai_learned_weights))
-    score = round(calculated_score, 1)
+    score = float(calculated_score)
 
     if score < 40.0:
-        return score, "🟢 [안전]", "스미싱 확률이 낮습니다. 안심하셔도 좋습니다.", "green"
+        return round(score, 1), "🟢 [안전]", "스미싱 확률이 낮습니다. 안심하셔도 좋습니다.", "green"
     elif score < 75.0:
-        return score, "🟡 [주의]", "의심스러운 정황이 있습니다. 확인 후 주의하세요!", "orange"
+        return round(score, 1), "🟡 [주의]", "의심스러운 정황이 있습니다. 확인 후 주의하세요!", "orange"
     else:
-        return score, "🔴 [위험]", "스미싱 확률이 매우 높습니다! 절대 링크를 누르지 마세요!", "red"
+        return round(score, 1), "🔴 [위험]", "스미싱 확률이 매우 높습니다! 절대 링크를 누르지 마세요!", "red"

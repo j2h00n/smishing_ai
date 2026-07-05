@@ -5,8 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
-import History from "@/pages/history";
-import Stats from "@/pages/stats";
 
 const queryClient = new QueryClient();
 
@@ -15,8 +13,6 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/history" component={History} />
-        <Route path="/stats" component={Stats} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

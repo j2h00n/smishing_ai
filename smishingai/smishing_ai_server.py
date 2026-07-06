@@ -309,6 +309,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("localhost", AI_PORT), Handler)
-    print(f"AI HTTP 서버 실행 중: http://localhost:{AI_PORT}", flush=True)
+    # 🌟 이 부분을 localhost에서 0.0.0.0으로 수정하여 외부 서비스 연결 허용
+    server = HTTPServer(("0.0.0.0", AI_PORT), Handler)
+    print(f"AI HTTP 서버 실행 중: http://0.0.0.0:{AI_PORT}", flush=True)
     server.serve_forever()

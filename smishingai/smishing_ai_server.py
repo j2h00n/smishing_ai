@@ -108,14 +108,14 @@ model.predict([dummy_t, dummy_f], verbose=0)
 
 
 # =====================================================================
-# 🌟 [오류 해결 패치] Keras 버전 비호환(input_axes) 문제를 해결하는 코드 추가
+# 🌟 [오류 해결 패치] 파일 로드 시의 GlorotUniform 비호환 문제를 해결하는 코드
 # =====================================================================
 try:
     import keras
     if hasattr(keras, "initializers") and hasattr(keras.initializers, "GlorotUniform"):
         _orig_glorot_init = keras.initializers.GlorotUniform.__init__
         def _safe_glorot_init(self, *args, **kwargs):
-            kwargs.pop('input_axes', None)   # 에러를 유발하는 구버전/신버전 비호환 옵션 제거
+            kwargs.pop('input_axes', None)
             kwargs.pop('output_axes', None)
             return _orig_glorot_init(self, *args, **kwargs)
         keras.initializers.GlorotUniform.__init__ = _safe_glorot_init
@@ -127,7 +127,7 @@ except Exception:
 import tensorflow.keras.backend as K
 from tensorflow.keras.models import load_model
 
-# 1. 커스텀 평가지표 수식 선언 (케라스가 모델을 정상적으로 읽으려면 필수!)
+# 1. 커스텀 평가지표 수식 선언
 def f2_score(y_true, y_pred):
     y_true = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
     y_pred = tf.cast(tf.reshape(tf.round(y_pred), [-1]), tf.float32)
@@ -141,9 +141,9 @@ def f2_score(y_true, y_pred):
     
     return 5.0 * (p * r) / (4.0 * p + r + K.epsilon())
 
-# 2. 97%짜리 완성형 멀티태스크 모델 통째로 불러오기
+# 2. 97%짜리 완성형 멀티태스크 모델 통째로 불러오기 (compile=False 옵션으로 안전하게 파일 파싱)
 keras_path = os.path.join(AI_DIR, "smishing_ai_combined.keras")
-model = load_model(keras_path, custom_objects={"f2_score": f2_score})
+model = load_model(keras_path, custom_objects={"f2_score": f2_score}, compile=False)
 
 print("모델 호출 성공", flush=True)
 
@@ -309,7 +309,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    # 🌟 이 부분을 localhost에서 0.0.0.0으로 수정하여 외부 서비스 연결 허용
+    # Render 외부 배포 환경을 고려하여 0.0.0.0 주소 바인딩 유지
     server = HTTPServer(("0.0.0.0", AI_PORT), Handler)
     print(f"AI HTTP 서버 실행 중: http://0.0.0.0:{AI_PORT}", flush=True)
     server.serve_forever()

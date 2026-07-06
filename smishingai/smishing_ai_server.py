@@ -76,25 +76,13 @@ if keras is not None:
         sys.modules["keras.src.preprocessing.sequence"] = seq_module
         setattr(preprocessing_module, "sequence", seq_module)
 
-MAX_LEN = 50
-FEATURE_DIM = 70
+MAX_LEN=50
+FEATURE_DIM=70
 
-# =====================================================================
-# 🌟 [교체 완료] 중복 빌드 제거 및 버전 호환성 패치가 적용된 무적의 로드 코드
-# =====================================================================
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.models import load_model
-from tensorflow.keras.initializers import GlorotUniform
 
-# 구버전 Keras의 버전 억까(input_axes 오류)를 무시하는 패치 클래스
-class SafeGlorotUniform(GlorotUniform):
-    def __init__(self, *args, **kwargs):
-        kwargs.pop('input_axes', None)
-        kwargs.pop('output_axes', None)
-        super().__init__(*args, **kwargs)
-
-# 커스텀 f2_score 평가지표 함수 정의
 def f2_score(y_true, y_pred):
     y_true = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
     y_pred = tf.cast(tf.reshape(tf.round(y_pred), [-1]), tf.float32)
@@ -105,17 +93,10 @@ def f2_score(y_true, y_pred):
     r = tp / (tp + fn + K.epsilon())
     return 5.0 * (p * r) / (4.0 * p + r + K.epsilon())
 
-# 통파일(.keras)을 안전하게 한 번에 로드
 keras_path = os.path.join(AI_DIR, "smishing_ai_combined.keras")
-model = load_model(
-    keras_path, 
-    custom_objects={
-        "f2_score": f2_score,
-        "GlorotUniform": SafeGlorotUniform
-    }
-)
+model = load_model(keras_path, custom_objects={"f2_score": f2_score})
 
-print("🎉 [성공] 97% 괴물 AI 모델을 통째로 안전하게 불러왔습니다!", flush=True)
+print("🎉 [성공] 서버 환경 통일로 모델 로드 성공!", flush=True)
 # =====================================================================
 
 with open(os.path.join(AI_DIR, "tokenizer_combined.pickle"), "rb") as f:

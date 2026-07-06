@@ -106,39 +106,28 @@ dummy_t = np.zeros((1, MAX_LEN))
 dummy_f = np.zeros((1, FEATURE_DIM))
 model.predict([dummy_t, dummy_f], verbose=0)
 
+import tensorflow.keras.backend as K
+from tensorflow.keras.models import load_model
+
+# 1. 커스텀 평가지표 수식 선언 (케라스가 모델을 정상적으로 읽으려면 필수!)
+def f2_score(y_true, y_pred):
+    y_true = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
+    y_pred = tf.cast(tf.reshape(tf.round(y_pred), [-1]), tf.float32)
+    
+    tp = tf.reduce_sum(y_true * y_pred)
+    fp = tf.reduce_sum((1.0 - y_true) * y_pred)
+    fn = tf.reduce_sum(y_true * (1.0 - y_pred))
+    
+    p = tp / (tp + fp + K.epsilon())
+    r = tp / (tp + fn + K.epsilon())
+    
+    return 5.0 * (p * r) / (4.0 * p + r + K.epsilon())
+
+# 2. 97%짜리 완성형 멀티태스크 모델 통째로 불러오기
 keras_path = os.path.join(AI_DIR, "smishing_ai_combined.keras")
-with zipfile.ZipFile(keras_path) as zf:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        weights_h5_path = os.path.join(tmpdir, "model.weights.h5")
-        with zf.open("model.weights.h5") as src, open(weights_h5_path, "wb") as dst:
-            dst.write(src.read())
+model = load_model(keras_path, custom_objects={"f2_score": f2_score})
 
-        with h5py.File(weights_h5_path, "r") as hf:
-            def get_vars(key):
-                group = hf[f"layers/{key}"]["vars"]
-                return [group[str(i)][:] for i in sorted(int(k) for k in group.keys())]
-
-            embedding_layer = model.get_layer("embedding")
-            embedding_layer.set_weights(get_vars("embedding"))
-
-            lstm_layer = model.get_layer("lstm")
-            cell_group = hf["layers/lstm/cell"]["vars"]
-            cell_keys = sorted(int(k) for k in cell_group.keys())
-            lstm_layer.set_weights([cell_group[str(k)][:] for k in cell_keys])
-
-            dense_layer = model.get_layer("dense")
-            dense_layer.set_weights(get_vars("dense"))
-
-            dense1_layer = model.get_layer("dense_1")
-            dense1_layer.set_weights(get_vars("dense_1"))
-
-            out5_layer = model.get_layer("out_5")
-            out5_layer.set_weights(get_vars("dense_2"))
-
-            outf_layer = model.get_layer("out_final")
-            outf_layer.set_weights(get_vars("dense_3"))
-
-print("모델 가중치 로드 완료!", flush=True)
+print("모델 호출 성공", flush=True)
 
 with open(os.path.join(AI_DIR, "tokenizer_combined.pickle"), "rb") as f:
     tokenizer = pickle.load(f)

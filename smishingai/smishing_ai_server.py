@@ -79,55 +79,44 @@ if keras is not None:
 MAX_LEN = 50
 FEATURE_DIM = 70
 
-
-def build_model():
-    text_input = Input(shape=(MAX_LEN,), name="text_input")
-    x1 = Embedding(5000, 32)(text_input)
-    x1 = LSTM(32, kernel_regularizer=l2(0.005))(x1)
-    x1 = Dropout(0.4)(x1)
-
-    feature_input = Input(shape=(FEATURE_DIM,), name="feature_input")
-    x2 = Dense(32, activation="relu", kernel_regularizer=l2(0.005))(feature_input)
-    x2 = Dropout(0.4)(x2)
-
-    combined = Concatenate()([x1, x2])
-    z = Dense(32, activation="relu", kernel_regularizer=l2(0.005))(combined)
-    z = Dropout(0.3)(z)
-
-    out_5 = Dense(5, activation="sigmoid", name="out_5")(z)
-    out_final = Dense(1, activation="sigmoid", name="out_final")(z)
-
-    return Model(inputs=[text_input, feature_input], outputs=[out_5, out_final])
-
-
-model = build_model()
-
-dummy_t = np.zeros((1, MAX_LEN))
-dummy_f = np.zeros((1, FEATURE_DIM))
-model.predict([dummy_t, dummy_f], verbose=0)
-
+# =====================================================================
+# 🌟 [교체 완료] 중복 빌드 제거 및 버전 호환성 패치가 적용된 무적의 로드 코드
+# =====================================================================
+import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.models import load_model
+from tensorflow.keras.initializers import GlorotUniform
 
-# 1. 커스텀 평가지표 수식 선언 (케라스가 모델을 정상적으로 읽으려면 필수!)
+# 구버전 Keras의 버전 억까(input_axes 오류)를 무시하는 패치 클래스
+class SafeGlorotUniform(GlorotUniform):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('input_axes', None)
+        kwargs.pop('output_axes', None)
+        super().__init__(*args, **kwargs)
+
+# 커스텀 f2_score 평가지표 함수 정의
 def f2_score(y_true, y_pred):
     y_true = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
     y_pred = tf.cast(tf.reshape(tf.round(y_pred), [-1]), tf.float32)
-    
     tp = tf.reduce_sum(y_true * y_pred)
     fp = tf.reduce_sum((1.0 - y_true) * y_pred)
     fn = tf.reduce_sum(y_true * (1.0 - y_pred))
-    
     p = tp / (tp + fp + K.epsilon())
     r = tp / (tp + fn + K.epsilon())
-    
     return 5.0 * (p * r) / (4.0 * p + r + K.epsilon())
 
-# 2. 97%짜리 완성형 멀티태스크 모델 통째로 불러오기
+# 통파일(.keras)을 안전하게 한 번에 로드
 keras_path = os.path.join(AI_DIR, "smishing_ai_combined.keras")
-model = load_model(keras_path, custom_objects={"f2_score": f2_score})
+model = load_model(
+    keras_path, 
+    custom_objects={
+        "f2_score": f2_score,
+        "GlorotUniform": SafeGlorotUniform
+    }
+)
 
-print("모델 호출 성공", flush=True)
+print("🎉 [성공] 97% 괴물 AI 모델을 통째로 안전하게 불러왔습니다!", flush=True)
+# =====================================================================
 
 with open(os.path.join(AI_DIR, "tokenizer_combined.pickle"), "rb") as f:
     tokenizer = pickle.load(f)

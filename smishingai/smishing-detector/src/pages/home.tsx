@@ -329,7 +329,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-block w-2 h-2 rounded-full bg-green-400 shrink-0" />
-                  <span><span className="font-semibold">39점 이하:</span> 정상 가능성 높음</span>
+                  <span><span className="font-semibold">39점 이하:</span> 안전 — 정상적인 메시지로 판단됩니다.</span>
                 </div>
               </div>
             </div>

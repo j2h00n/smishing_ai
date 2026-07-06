@@ -191,19 +191,25 @@ def analyze(text):
     t_in = pad_sequences(seq, maxlen=MAX_LEN, padding="post")
     f_in = np.array([extract_features(clean_text)], dtype=np.float32)
 
-    pred_5, pred_final = model.predict([t_in, f_in], verbose=0)
-
-    score = round(float(pred_final[0][0]) * 100, 1)
+    pred_5, _ = model.predict([t_in, f_in], verbose=0)
 
     category_scores = {
         CATEGORY_KEYS[i]: round(float(pred_5[0][i]) * 100, 1)
         for i in range(5)
     }
 
+    weights_map = {CATEGORIES[i]: round(float(ai_learned_weights[i]), 1) for i in range(5)}
+
+    weighted_contributions = {
+        CATEGORIES[i]: round(category_scores[CATEGORY_KEYS[i]] * float(ai_learned_weights[i]) / 100, 1)
+        for i in range(5)
+    }
+    score = round(sum(weighted_contributions.values()), 1)
+
     if score < 40.0:
-        risk_level = "safe" if score < 20.0 else "low"
+        risk_level = "safe"
     elif score < 75.0:
-        risk_level = "medium" if score < 57.0 else "high"
+        risk_level = "medium"
     else:
         risk_level = "critical"
 
